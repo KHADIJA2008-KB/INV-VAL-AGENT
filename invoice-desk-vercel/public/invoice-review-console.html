@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoice Validation</title>
+<style>
+:root{--bg:#f3f5f8;--sf:#fff;--ink:#17212b;--mute:#5d6a79;--line:#e1e6ed;--ac:#1d4e89;--on:#fff;--ok:#16704a;--okb:#e4f3ec;--wr:#8f5700;--wrb:#fbefd6;--bd:#b3261e;--bdb:#fce8e6;--in:#1d4e89;--inb:#e6eef8;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141a;--sf:#171e26;--ink:#e8edf2;--mute:#97a4b3;--line:#27313c;--ac:#6ea8fe;--on:#0b1626;--ok:#5ad39a;--okb:#12301f;--wr:#f0b84a;--wrb:#33270d;--bd:#ff8a80;--bdb:#3a1714;--in:#8ab8ff;--inb:#16263b}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+button{font-family:inherit;cursor:pointer}
+.app{display:grid;grid-template-rows:56px 1fr;height:100%}
+.bar{display:flex;align-items:center;gap:14px;padding:0 24px;background:var(--sf);border-bottom:1px solid var(--line)}
+.mk{width:30px;height:30px;border-radius:8px;background:var(--ac);color:var(--on);display:grid;place-items:center}
+.ttl b{display:block;font-size:14.5px;line-height:1.2}.ttl span{font-size:12px;color:var(--mute)}
+.grow{flex:1}
+.tally{font-size:12.5px;color:var(--mute);display:flex;gap:16px}.tally b{color:var(--ink);font-weight:650}
+.status{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mute)}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--wr)}.status.ok i{background:var(--ok)}.status.bad i{background:var(--bd)}
+.cols{display:grid;grid-template-columns:400px 1fr;min-height:0}
+.chat{display:flex;flex-direction:column;min-height:0;background:var(--sf);border-right:1px solid var(--line)}
+.sh{padding:14px 20px;font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);border-bottom:1px solid var(--line)}
+#feed{flex:1;overflow:auto;padding:18px 20px}
+.m{margin:0 0 12px;max-width:90%;padding:10px 14px;border-radius:10px;font-size:14px}
+.m.me{margin-left:auto;background:var(--ac);color:var(--on)}
+.m.bot{background:var(--bg);border:1px solid var(--line)}
+.m p{margin:0 0 6px}.m p:last-child{margin:0}.m small{color:var(--mute)}
+.dots span{display:inline-block;width:6px;height:6px;margin:0 2px;border-radius:50%;background:var(--mute);animation:b 1s infinite}
+.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,60%,100%{opacity:.3}30%{opacity:1}}
+.ex{padding:10px 20px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ex span{font-size:12px;color:var(--mute)}
+.chip{font:600 12px ui-monospace,Menlo,monospace;background:transparent;color:var(--ink);border:1px solid var(--line);padding:4px 10px;border-radius:6px}
+.chip:hover{border-color:var(--ac);color:var(--ac)}
+form{display:flex;gap:8px;padding:12px 20px 18px}
+textarea{flex:1;resize:none;border:1px solid var(--line);background:var(--sf);color:var(--ink);border-radius:8px;padding:10px 12px;font:inherit;outline:0;max-height:100px}
+textarea:focus{border-color:var(--ac)}
+.go{border:0;background:var(--ac);color:var(--on);border-radius:8px;padding:0 18px;font-weight:650}
+.go:disabled{opacity:.45;cursor:default}
+.case{overflow:auto}
+.wrap{max-width:800px;margin:0 auto;padding:26px 30px 40px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.tabs:empty{display:none}
+.tab{display:flex;align-items:center;gap:7px;font:600 12px ui-monospace,Menlo,monospace;background:var(--sf);color:var(--ink);border:1px solid var(--line);padding:5px 11px;border-radius:6px}
+.tab i{width:7px;height:7px;border-radius:50%}.tab.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--inb)}
+.crumb{font-size:12px;color:var(--mute);margin-bottom:6px}
+.hd{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.id{font:650 26px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.01em}
+.bdg{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:650;padding:4px 11px;border-radius:99px}
+.bdg:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ok{color:var(--ok);background:var(--okb)}.wr{color:var(--wr);background:var(--wrb)}.bd{color:var(--bd);background:var(--bdb)}.in{color:var(--in);background:var(--inb)}.mu{color:var(--mute);background:var(--line)}
+.acts{margin-left:auto;display:flex;gap:8px}
+.gh{background:var(--sf);border:1px solid var(--line);color:var(--ink);font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:7px}
+.gh:hover{border-color:var(--ac)}
+.card{background:var(--sf);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.card h3{margin:0 0 10px;font-size:11.5px;font-weight:650;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+.lead{font-size:16.5px;font-weight:600;margin:0 0 6px;line-height:1.45}
+.sum{margin:0;color:var(--mute)}
+.cr{display:grid;grid-template-columns:190px 92px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.cr:first-of-type{border-top:0;padding-top:0}
+.cr b{font-weight:600}.cr .d{color:var(--mute);font-size:13.5px}
+.alert{border-left:3px solid var(--bd);background:var(--bdb);padding:12px 14px;border-radius:0 8px 8px 0}
+.steps{display:flex;margin:2px 0 16px}
+.st{flex:1;position:relative;font-size:12px;color:var(--mute);text-align:center;padding-top:26px}
+.st:before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;background:var(--line);z-index:1}
+.st:after{content:"";position:absolute;top:8px;left:50%;width:100%;height:2px;background:var(--line)}
+.st:last-child:after{display:none}
+.st.dn{color:var(--ink)}.st.dn:before,.st.dn:after{background:var(--ok)}
+.st.nw{color:var(--ink);font-weight:650}.st.nw:before{background:var(--sf);border:5px solid var(--ac)}
+.btn{display:inline-block;background:var(--ac);color:var(--on);text-decoration:none;font-weight:650;padding:9px 16px;border-radius:8px;font-size:13.5px}
+.hint{font-size:13px;color:var(--mute)}
+.fine{font-size:12px;color:var(--mute);margin-top:6px}
+.empty{text-align:center;color:var(--mute);padding:90px 20px}.empty h2{margin:0 0 6px;color:var(--ink);font-size:18px}
+.sk div{height:12px;border-radius:6px;margin:12px 0;background:linear-gradient(90deg,var(--line),var(--bg),var(--line));background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+@media (max-width:860px){.cols{grid-template-columns:1fr;grid-template-rows:52% 48%}.chat{border-right:0;border-bottom:1px solid var(--line)}.wrap{padding:18px 16px}.cr{grid-template-columns:1fr auto}.cr .d{grid-column:1/-1}.tally{display:none}.bar{padding:0 14px}}
+@media print{.bar,.chat,.tabs,.acts{display:none!important}.app{display:block;height:auto}.cols{display:block}.case{overflow:visible}body{background:#fff}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="bar"><div class="mk"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v3H9z"/><path d="M15 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></div><div class="ttl"><b>Invoice Validation</b><span>Finance review</span></div><div class="grow"></div><div class="tally" id="tally"></div><div class="status" id="pill"><i></i><span></span></div></header>
+<div class="cols">
+<section class="chat"><div class="sh">Assistant</div>
+<div id="feed" aria-live="polite"><div class="m bot"><p>Hello. Send an invoice ID and I’ll check it against its purchase order and goods receipt.</p><p><small>I only prepare a recommendation. A finance approver makes the decision.</small></p></div></div>
+<div class="ex"><span>Examples</span><span id="chips"></span></div>
+<form id="f"><textarea id="box" rows="1" placeholder="review INV-003" aria-label="Message"></textarea><button class="go" id="go">Send</button></form></section>
+<section class="case" id="case"><div class="wrap"><div class="tabs" id="recent"></div><div id="host"></div></div></section>
+</div></div>
+<script>
+/* ---- LINK THE AGENT HERE ----
+   ENDPOINT: the platform API address, or your relay address (recommended for clients).
+   HEADERS:  for a private test only, {"X-API-Key": "..."}; never ship a real key in this file.
+   Leave ENDPOINT empty for demo mode. */
+const CONFIG = {
+  ENDPOINT: "",
+  HEADERS: {},
+  BODY: (m, c) => ({ input: m, conversationId: c, test_mode: "off" })
+};
+
+/*PURE*/
+const FR = [[/^Discrepancy \((.*)\)$/, "$1"], [/^unit_price: /, "Price: "], [/^quantity: /, "Quantity: "], [/^tax: /, "Tax: "], [/^arithmetic: /, "Calculation: "], [/^total: /, "Total: "], [/^currency: /, "Currency: "], [/^Flag bank_mismatch: /, "Bank details: "], [/^Flag price_jump: /, "Unusual price: "], [/^Flag high_value: /, "High value: "], [/^Flag possible_prompt_injection: /, "Suspicious text: "], [/^Possible duplicate: /, "Possible duplicate of "]];
+const friendly = t => { let s = String(t).trim(); FR.forEach(p => { s = s.replace(p[0], p[1]); }); return s; };
+const REC = { approve: "I recommend approving this invoice. It matches its purchase order and goods receipt.", hold: "I recommend holding this invoice until the points below are checked.", reject: "I recommend rejecting this invoice." };
+const GROUPS = [["Duplicate check", /^Possible duplicate/], ["Match to PO and receipt", /^(Price|Quantity|Tax|Calculation|Total|Currency):/], ["Bank details", /^Bank details:/], ["Unusual changes", /^(Unusual price|High value|Suspicious text):/]];
+function fromText(s) {
+  s = String(s); const um = s.match(/"uiUrl"\s*:\s*"(https?:[^"]+)"/) || s.match(/(https?:\/\/\S+\/resume\/[^\s"')]+)/);
+  const j = s.search(/\{\s*"operation"/); if (j > -1) s = s.slice(0, j);
+  const c = { text: s.trim(), url: um ? um[1] : null };
+  const h = s.match(/^Invoice (INV-\d{3}): (.*)$/m);
+  if (h) {
+    c.id = h[1]; c.lead = h[2]; c.rec = /approving/i.test(h[2]) ? "approve" : /holding/i.test(h[2]) ? "hold" : /rejecting/i.test(h[2]) ? "reject" : "pending";
+    c.finds = s.replace(/\r/g, "").split("\n").map(x => x.trim()).filter(x => x.slice(0, 2) === "- ").map(x => friendly(x.slice(2)));
+    const sm = s.match(/^Summary: (.*)$/m); c.summary = sm ? sm[1] : "";
+    c.level = /^This case needs senior finance/m.test(s) ? "senior finance" : "";
+  }
+  const n = s.match(/I could not review (INV-\d{3})\. Reason: (.*?)\. Nothing/);
+  if (n) { c.id = n[1]; c.reason = n[2]; c.rec = "na"; }
+  return c;
+}
+function fromData(d, asked) {
+  const f = {}; (d.responseStructure || []).forEach(x => { f[x.name] = x.value; });
+  const rec = String(f.recommendation || "").toLowerCase();
+  const c = { id: String(f.invoice_id || asked || "").toUpperCase(), url: d._resume && d._resume.uiUrl, rec: REC[rec] ? rec : "pending", finds: [], summary: "", level: "" };
+  if (REC[rec]) {
+    c.lead = REC[rec]; c.finds = String(f.reasons_text || "").split("; ").map(friendly).filter(Boolean);
+    c.summary = f.rationale || ""; c.level = f.escalation_level === "senior_finance" ? "senior finance" : "";
+  }
+  return c;
+}
+function pickText(j) {
+  if (typeof j === "string") return j;
+  for (const k of ["result", "message", "output", "content", "text"]) if (j && j[k] !== undefined) return pickText(j[k]);
+  return "";
+}
+function normalize(j, asked) {
+  if (typeof j === "string") return fromText(j);
+  if (j && j.success === false) return { text: "I could not complete the review. Please try again.", rec: "err" };
+  const o = (j && j.output) || j || {};
+  if (o.data && o.data._resume) return fromData(o.data, asked);
+  return fromText(pickText(o) || JSON.stringify(j));
+}
+/*ENDPURE*/
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const feed = $("#feed"), box = $("#box"), host = $("#host"), goBtn = $("#go");
+const cid = "s-" + Math.random().toString(36).slice(2, 10);
+let busy = false, cases = [];
+
+["review INV-003", "review INV-010", "review INV-011", "review INV-005"].forEach(t => {
+  const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = t.slice(7);
+  b.onclick = () => send(t); $("#chips").appendChild(b);
+});
+function setPill(s) {
+  s = s || (CONFIG.ENDPOINT ? "ok" : ""); const p = $("#pill");
+  p.className = "status " + s; p.lastChild.textContent = { ok: "Connected", bad: "Offline", "": "Demo mode" }[s];
+}
+function say(role, html) { const d = document.createElement("div"); d.className = "m " + role; d.innerHTML = html; feed.appendChild(d); feed.scrollTop = feed.scrollHeight; return d; }
+const VIEW = { approve: ["Recommend approve", "ok"], hold: ["Recommend hold", "wr"], reject: ["Recommend reject", "bd"], pending: ["Awaiting approval", "in"], na: ["Not reviewed", "mu"], err: ["Error", "bd"] };
+const DOT = { approve: "var(--ok)", hold: "var(--wr)", reject: "var(--bd)", pending: "var(--in)", na: "var(--mute)" };
+
+function empty() { host.innerHTML = '<div class="empty"><h2>No case open</h2><p>Review an invoice and the case file opens here, with the recommendation, the checks and the approval status.</p></div>'; }
+function skeleton(id) { host.innerHTML = '<div class="crumb">Case file</div><div class="hd"><span class="id">' + esc(id) + '</span></div><div class="card sk"><div style="width:60%"></div><div></div><div style="width:80%"></div></div>'; }
+function show(c) {
+  const V = VIEW[c.rec] || VIEW.na; const sen = c.level === "senior finance";
+  let h = '<div class="crumb">Case file</div><div class="hd"><span class="id">' + esc(c.id) + '</span><span class="bdg ' + V[1] + '">' + V[0] + '</span><div class="acts"><button class="gh" id="cp">Copy summary</button><button class="gh" onclick="window.print()">Print</button></div></div>';
+  if (c.rec === "na") {
+    h += '<div class="card"><h3>Result</h3><div class="alert"><b>This invoice could not be reviewed.</b><br>' + esc(c.reason) + '.</div><p class="fine">Nothing was changed. Please correct the record and send it again.</p></div>';
+  } else {
+    if (c.lead) {
+      h += '<div class="card"><h3>Recommendation</h3><p class="lead">' + esc(c.lead) + '</p>' + (c.summary ? '<p class="sum">' + esc(c.summary) + '</p>' : "") + '</div>';
+      h += '<div class="card"><h3>Checks</h3>';
+      GROUPS.forEach(g => {
+        const hit = c.finds.filter(f => g[1].test(f));
+        h += '<div class="cr"><b>' + g[0] + '</b><span class="bdg ' + (hit.length ? "wr" : "ok") + '">' + (hit.length ? (hit.length > 1 ? hit.length + " issues" : "Issue") : "Clear") + '</span><span class="d">' + (hit.length ? hit.map(esc).join("<br>") : "No concerns found") + '</span></div>';
+      });
+      h += "</div>";
+    } else h += '<div class="card"><h3>Status</h3><p class="lead">The checks are complete.</p><p class="sum">The case is waiting for a finance approver.</p></div>';
+    h += '<div class="card"><h3>Approval</h3><div class="steps"><div class="st dn">Checked</div><div class="st dn">Recommended</div><div class="st nw">' + (sen ? "Senior finance review" : "Finance review") + '</div><div class="st">Recorded</div></div>';
+    h += c.url ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(c.url) + '">Open approval page</a>' : '<span class="hint">Waiting for a finance approver to record the decision.</span>';
+    h += "</div>";
+  }
+  h += '<p class="fine">This is a recommendation only. The assistant never makes payments or changes bank details.</p>';
+  host.innerHTML = h; $("#case").scrollTop = 0; tabs(c.id);
+  const cp = $("#cp");
+  cp.onclick = () => {
+    const t = [c.id + ": " + (c.lead || c.reason || V[0])].concat((c.finds || []).map(f => "- " + f), c.summary ? [c.summary] : []).join("\n");
+    if (navigator.clipboard) navigator.clipboard.writeText(t);
+    cp.textContent = "Copied"; setTimeout(() => { cp.textContent = "Copy summary"; }, 1500);
+  };
+}
+function tabs(active) {
+  const r = $("#recent"); r.innerHTML = "";
+  cases.forEach(c => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "tab" + (c.id === active ? " on" : "");
+    b.innerHTML = '<i style="background:' + (DOT[c.rec] || "var(--mute)") + '"></i>' + esc(c.id); b.onclick = () => show(c); r.appendChild(b);
+  });
+}
+function tally() {
+  const n = k => cases.filter(c => c.rec === k).length;
+  $("#tally").innerHTML = "<span><b>" + cases.length + "</b> reviewed</span><span><b>" + n("approve") + "</b> approve</span><span><b>" + n("hold") + "</b> hold</span><span><b>" + n("reject") + "</b> reject</span>";
+}
+function reply(c) {
+  if (c.id && VIEW[c.rec]) {
+    cases = cases.filter(x => x.id !== c.id); cases.unshift(c); show(c); tally();
+    say("bot", c.rec === "na" ? "<p>" + esc(c.text) + "</p>" : c.rec === "pending" ? "<p>I’ve completed the checks for <b>" + esc(c.id) + "</b>. It is now waiting for finance approval.</p>" : "<p>I’ve reviewed <b>" + esc(c.id) + "</b>. " + esc(c.lead) + "</p><p><small>Details are in the case file.</small></p>");
+  } else {
+    say("bot", "<p>" + esc(c.text || "I did not get a reply. Please try again.") + "</p>");
+    if (cases.length) show(cases[0]); else empty();
+  }
+}
+
+/* ---- agent call and demo ---- */
+async function ask(m) {
+  const r = await fetch(CONFIG.ENDPOINT, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, CONFIG.HEADERS), body: JSON.stringify(CONFIG.BODY(m, cid)) });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j) throw new Error("HTTP " + r.status);
+  return j;
+}
+const END = "\nThis is a recommendation only. I never make payments or change bank details.";
+const DEMO = {
+  "INV-003": "Invoice INV-003: This invoice matches its purchase order and goods receipt. I recommend approving it.\n\nI found no problems.\n\nSummary: Quantities, prices, tax and totals all agree with the purchase order and goods receipt, and no duplicate or bank-detail issues were found.\n\nA finance approver will review this and record the decision." + END,
+  "INV-010": "Invoice INV-010: I recommend holding this invoice until the points below are checked.\n\nWhat I found:\n- Bank details: Bank account on invoice (****9999) differs from Supplier Master (****0003)\n\nSummary: Amounts and quantities match, but the bank account on the invoice is not the one on record for this supplier, so it cannot be approved until verified.\n\nThis case needs senior finance approval because of the findings or the amount." + END,
+  "INV-011": "Invoice INV-011: I recommend rejecting this invoice.\n\nWhat I found:\n- Possible duplicate of INV-002 (same supplier and invoice number)\n\nSummary: This invoice repeats the supplier and invoice number of an earlier invoice that was already processed.\n\nA finance approver will review this and record the decision." + END,
+  "INV-005": "I could not review INV-005. Reason: Missing required field: po_id. Nothing was changed. Please correct the record and try again."
+};
+function demo(t) {
+  const m = t.match(/INV-\d{3}/i); if (!m) return "Please send an invoice ID, for example: review INV-003.";
+  return DEMO[m[0].toUpperCase()] || "I could not review " + m[0].toUpperCase() + " in demo mode. Link the agent to review any invoice.";
+}
+async function send(t) {
+  t = String(t).trim(); if (!t || busy) return;
+  busy = true; goBtn.disabled = true; box.value = ""; box.style.height = "auto"; say("me", esc(t));
+  const idm = t.match(/INV-\d{3}/i), asked = idm ? idm[0].toUpperCase() : "";
+  if (asked) skeleton(asked);
+  const ty = say("bot", '<div class="dots"><span></span><span></span><span></span></div>');
+  try {
+    const raw = CONFIG.ENDPOINT ? await ask(t) : await new Promise(r => setTimeout(() => r(demo(t)), 900));
+    ty.remove(); reply(normalize(raw, asked)); setPill();
+  } catch (e) {
+    ty.remove(); say("bot", "<p>I could not reach the assistant. Please check the connection and try again.</p>"); setPill("bad");
+    if (cases.length) show(cases[0]); else empty();
+  }
+  busy = false; goBtn.disabled = false; box.focus();
+}
+$("#f").onsubmit = e => { e.preventDefault(); send(box.value); };
+box.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(box.value); } });
+box.addEventListener("input", () => { box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 100) + "px"; });
+setPill(); empty(); tally();
+</script>
+</body>
+</html>
